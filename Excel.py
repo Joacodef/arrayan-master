@@ -14,7 +14,7 @@ pos_scriptname = full_script_route.find(os.path.basename(__file__))
 script_folder = full_script_route[:pos_scriptname]
 os.chdir(script_folder)
 
-filename = "TENS oct.xlsx"
+#filename = "TENS oct.xlsx"
 output_filename = "montosBoletas.xlsx"
 
 def extract_general_data(filename):
@@ -42,7 +42,7 @@ def extract_employee_data(dataFrames, sheet_names):
     df_counter = 0 # Needed to obtain the corresponding sheet_name of the current dataframe
     for df in dataFrames: # Iterate over the data of each dataFrame
         rows = len(df.axes[0]) # Not used for now
-        cols = len(df.axes[1]) # Not used for now
+        cols = len(df.axes[1])
         ops = df.iloc[:, 0] # It is assumed that each odd element will be NaN
         for i in range(2,cols): # Iterate over employees in the dataframe
             column = df.iloc[:, i] # Obtain each entire column in the dataframe
@@ -122,9 +122,11 @@ def generate_emp_tables(employees):
         counter = max_procedures + 4
     workbook.close()
 
+"""
 dataFrames, sheet_names = extract_general_data(filename)
 employees = extract_employee_data(dataFrames, sheet_names)
 generate_emp_tables(employees)
+"""
 
 """
 #print(dataFrames)
