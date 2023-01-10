@@ -3,13 +3,18 @@ import PySimpleGUI as sg
 import os
 import datetime
 
-nombreHoja = ""
 
+"""
 # Specify the "current working directory" as the directory where this script is located:
 full_script_route = os.path.realpath(__file__)
 pos_scriptname = full_script_route.find(os.path.basename(__file__))
 script_folder = full_script_route[:pos_scriptname]
 os.chdir(script_folder)
+"""
+# Set the Desktop as the working directory:
+os.chdir(os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop'))
+
+nombreHoja = ""
 
 def crearExcel(filename):
     try:
@@ -41,7 +46,7 @@ def seleccionarArchivo():
         elif event in ['Seleccionar']:
             # If the user clicks the "Seleccionar" button, then check if there is already an output file in the same directory:
             if os.path.exists("montosBoletas.xlsx"):
-                layout_prompt = [[sg.Text("Atención: Ya existe un archivo excel \"montosBoletas.xlsx\" en esta carpeta. ¿Desea reemplazarlo?")],[sg.Button("Aceptar"),sg.Button("Cancelar")]]
+                layout_prompt = [[sg.Text("Atención: Ya existe un archivo excel \"montosBoletas.xlsx\" en el escritorio. ¿Desea reemplazarlo?")],[sg.Button("Aceptar"),sg.Button("Cancelar")]]
                 ventana_prompt = sg.Window('Resultado', layout_prompt, element_justification='c')
                 while True:
                     event_prompt, values_prompt = ventana_prompt.read()
@@ -65,13 +70,13 @@ def seleccionarArchivo():
                 crearExcel(values["rutaArchivo"])
                 # Check if the output file was created successfully:
                 if os.path.exists("montosBoletas.xlsx"):
-                    layout2 = [[sg.Text("Se ha generado el archivo un nuevo archivo \"montosBoletas.xlsx\" en la carpeta de este software")],[sg.Button("Aceptar")]]
+                    layout2 = [[sg.Text("Se ha generado el archivo un nuevo archivo \"montosBoletas.xlsx\" en el escritorio.")],[sg.Button("Aceptar")]]
                 else:
                     layout2 = [[sg.Text("Error en la creacion del archivo excel. Por favor, inténtelo de nuevo.")],[sg.Button("Aceptar")]]    
             except Exception as error:
                 # If there was an error creating the output file, then display an error message:
                 layout2 = [[sg.Text("Error en la creacion del archivo excel \"montosBoletas.xlsx\", el error es:")],\
-                        [sg.Text(str(error),justification='center', font=("Arial",11,'italic'))],[sg.Text("Intente corregir el error e intentarlo de nuevo")],[sg.Button("Aceptar")]]
+                        [sg.Text(str(error),justification='center', font=("Arial",11,'italic'))],[sg.Text("Intente corregir el error e intentarlo de nuevo.")],[sg.Button("Aceptar")]]
                 f = open("errorLogs.txt", "a")
                 f.write(str(datetime.datetime.now())+" "+str(error)+"\n")
                 f.close()
