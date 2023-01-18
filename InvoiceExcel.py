@@ -21,12 +21,11 @@ def extract_general_data(filename):
         correct_procedure_col = False
         correct_precio_col = False
         for header in df_1.columns.values.tolist():
-            # Levenshtein distances allows us to compare how different 2 strings are. To account for typos or other errors, we search for a good enough coincidence
             # The sheet must contain both the "procedimiento" and the "precio" columns or neither of them
             # If the sheet contains only one of them, then raise an exception
-            if Levenshtein.distance("procedimiento",header.lower().strip())<3:
+            if compare_strings("procedimiento", header, 2):
                 correct_procedure_col = True
-            if Levenshtein.distance("precio",header.lower().strip())<3: 
+            if compare_strings("precio", header, 2): 
                 correct_precio_col = True
         if correct_procedure_col and correct_precio_col:
             dataFrames.append(df_1)
@@ -41,10 +40,10 @@ def extract_employee_data(dataFrames, sheet_names):
     employees = []
     df_counter = 0 # Needed to obtain the corresponding sheet_name of the current dataframe
     for df in dataFrames: # Iterate over the data of each dataFrame
-        rows = len(df.axes[0]) # Not used for now
+        # rows = len(df.axes[0])
         cols = len(df.axes[1])
         ops = df.iloc[:, 0] # It is assumed that each odd element will be NaN
-        for i in range(2,cols): # Iterate over employees in the dataframe
+        for i in range(2,cols): # Iterate over employees in the dataframe to store their data in Employee objects
             column = df.iloc[:, i] # Obtain each entire column in the dataframe
             emp_found = False # Needed to indicate whether the employee already exists, and not add it again to the employees list
             if 'Unnamed' in column.name: # Skip unnamed columns
@@ -52,8 +51,8 @@ def extract_employee_data(dataFrames, sheet_names):
             else:
                 # Search (by full name) if the employee has already been added to the list:
                 for em in employees:
-                    # Find the employee that has been added to the list:
-                    if Levenshtein.distance(em.name.upper().strip(),column.name.upper().strip()) < 2: # Account for possible typos or accent mark inconsistencies
+                    # Compare the name of the employee in the column with the name of the employee in the list
+                    if compare_strings(column.name, em.name, 1): # Account for possible typos or accent mark inconsistencies
                         employee_aux = em
                         emp_found = True
                         break
@@ -78,16 +77,19 @@ def extract_employee_data(dataFrames, sheet_names):
                         if row > 0:
                             if str(ops[j-1]) in dict_job:
                                 dict_job[str(ops[j-1])].append(int(row)) # The money to be paid should be higher than zero if procedures are not zero
+                        elif str(ops[j-1]) in dict_job:
+                            dict_job[str(ops[j-1])].append(0)
                     j += 1
                 dict_job["job_name"] = sheet_names[df_counter] # Add an element to the dictionary that specifies the type of job performed
-                employee_aux.jobs_list.append(dict_job)
+                employee_aux.add_job(dict_job) # The function verifies that jobs and procedures follow th correct format
                 if not emp_found:
                     employees.append(employee_aux) 
         df_counter += 1 
     return employees
 
-# Generate the output excel based on the information of the input excel:
-def generate_emp_tables(employees):
+# Generate the output excel based on the information extracted from the input excel:
+def generate_invoices_file(employees):
+    # Initial set up of the excel file:
     try:
         counter = 1 # Indicates the row in which the information has to be written
         workbook = xlsxwriter.Workbook(output_filename) # Create a new excel file
@@ -106,15 +108,15 @@ def generate_emp_tables(employees):
     except Exception as e:
         raise Exception("Error en la inicialización del excel de salida. "+str(e))
 
-
+    # Write the procedures and money amounts of each employee in the excel file:
     for emp in employees:
         try:
             job_num = 1 # Indicates the column in which the information has to be written
-            worksheet.write('A'+str(counter),emp.name) # Always starts in the column 'A'
+            worksheet.write('A'+str(counter),emp.get_name()) # Always starts in the column 'A'
             counter += 1
             max_procedures = 0
             # First, iterate over each job, and write each procedure in the job, next to the money to be paid for it:
-            for job in emp.jobs_list:
+            for job in emp.get_jobs_list():
                 # For each job, write the job name first, and then the procedures performed in that job:
                 merge_format = workbook.add_format({
                     'bold': 1,
@@ -124,53 +126,55 @@ def generate_emp_tables(employees):
                     'fg_color': 'white'})
                 worksheet.merge_range(excel_column_names[job_num]+str(counter)+":"+excel_column_names[job_num+1]+str(counter),job["job_name"], merge_format)
                 counter_aux = counter + 1 # An auxiliary counter has to be used, because we want to go back to the initial row after finishing each job specification
-                for procedure in job.keys():
+                job_name = job["job_name"]
+                procs, proc_names = emp.get_procedures_job(job_name)
+                i = 0
+                for procedure in procs:
                     # For each procedure, write its name and the amount that has to be paid for it in the same row
-                    if Levenshtein.distance(str(procedure).upper().strip(),"JOB_NAME")>1:
-                        worksheet.write(excel_column_names[job_num]+str(counter_aux), str(job[procedure][0])+" "+str(procedure), normal)
-                        if len(job[procedure]) > 1:
-                            worksheet.write(excel_column_names[job_num+1]+str(counter_aux), job[procedure][1], money_format)
+                    if not compare_strings(str(procedure),"JOB_NAME",1):
+                        worksheet.write(excel_column_names[job_num]+str(counter_aux), str(procedure[0])+ " " + proc_names[i], normal)
+                        if len(procedure) > 1:
+                            worksheet.write(excel_column_names[job_num+1]+str(counter_aux), procedure[1], money_format)
                         else:
                             worksheet.write(excel_column_names[job_num+1]+str(counter_aux), "", normal)
                         counter_aux += 1
                     if counter_aux > max_procedures:
                         max_procedures = counter_aux # Keep track of the highest row in which information has been written
+                    i += 1
                 job_num += 2
         except IndexError:
-                raise Exception("El empleado "+emp.name+" tiene demasiados trabajos asignados - "+str(int(job_num/2))+\
+                raise Exception("El empleado "+emp.get_name()+" tiene demasiados trabajos asignados - "+str(int(job_num/2))+\
                     ". Verificar que su nombre no se repita en más de una columna dentro de la misma hoja.")
         except Exception as e:
-            raise Exception("Error al generar la tabla del empleado "+emp.name+". "+str(e)+".")
+            raise Exception("Error al generar la tabla del empleado "+emp.get_name()+". "+str(e)+".")
 
 
-        # Iterate again over jobs, to write the total amount of money for each one done, and the total to be paid:
+        # Iterate again over jobs, to write the total amount of money for each one done (called subtotals):
         job_num = 1
-        job_total = len(emp.jobs_list)
+        job_total = len(emp.get_jobs_list())
         total_total = 0 # Total amount of money to be paid to the employee
-        
-        for job in emp.jobs_list:
+        for job in emp.get_jobs_list():
+            job_name = job["job_name"]
             try:
+                procs, _ = emp.get_procedures_job(job_name)
                 if job_total > 1:
                     worksheet.write(excel_column_names[job_num]+str(max_procedures), "subtotal", normal)
                     subtotal = 0.0 # Amount of money to be paid for each kind of job
-                    for procedure in job.keys():
-                        if Levenshtein.distance(str(procedure).upper().strip(),"JOB_NAME")>1:
-                            if len(job[procedure]) > 1:
-                                subtotal += float(job[procedure][1])
+                    for procedure in procs:
+                        subtotal += float(procedure[1])
                     worksheet.write(excel_column_names[job_num+1]+str(max_procedures), int(subtotal), money_format)
                     job_num += 2
                     total_total += subtotal
                 else:
-                    for procedure in job.keys():
-                        if Levenshtein.distance(str(procedure).upper().strip(),"JOB_NAME")>1:
-                            if len(job[procedure]) > 1:
-                                total_total += float(job[procedure][1])
+                    for procedure in procs:
+                        if len(procedure) > 1:
+                            total_total += float(procedure[1])
                     max_procedures-=1
             except IndexError:
-                raise Exception("El empleado "+emp.name+" tiene demasiados trabajos asignados - "+str(int(job_num/2))+\
+                raise Exception("El empleado "+emp.get_name()+" tiene demasiados trabajos asignados - "+str(int(job_num/2))+\
                     ". Verificar que su nombre no se repita en demasiadas columnas.")
-            except:
-                raise Exception("Error al calcular el subtotal de la hoja "+job["job_name"]+" del empleado "+emp.name+".")
+            except Exception as e:
+                raise Exception("Error al calcular el subtotal de la hoja "+job["job_name"]+" del empleado "+emp.get_name()+".\n"+str(e))
         """
         # In case we want to merge cells for the rows total, 4% and MONTO BOLETA:
         
@@ -180,6 +184,7 @@ def generate_emp_tables(employees):
                                 str(max_procedures+1),int(total_total), money_format_bold)
         else:
         """
+        # Write the rows total, 4% and MONTO BOLETA in the excel file:
         worksheet.write('A'+str(max_procedures+1), "total", normal)
         worksheet.write('B'+str(max_procedures+1), int(total_total), money_format)
         worksheet.write('A'+str(max_procedures+2), "4%", bold)
@@ -188,6 +193,15 @@ def generate_emp_tables(employees):
         worksheet.write('B'+str(max_procedures+3), int(total_total)*0.96, money_format_final)
         counter = max_procedures + 6
     workbook.close()
+
+def compare_strings(string1, string2, max_dist=0):
+    # Compare strings indpendently of upper/lower case and surrounding spaces
+    # Levenshtein distances allows us to compare HOW different 2 strings are. 
+    # To account for typos or other errors, we search for a good enough coincidence, according to the max_dist parameter:
+    if Levenshtein.distance(string1.upper().strip(),string2.upper().strip()) <= max_dist:
+        return True
+    else:
+        return False
 
 """
 # Tests to check if the script is working correctly:

@@ -94,7 +94,7 @@ def createExcel(filename):
     try:
         dataFrames, sheet_names = InvoiceExcel.extract_general_data(filename)
         employees = InvoiceExcel.extract_employee_data(dataFrames, sheet_names)
-        InvoiceExcel.generate_emp_tables(employees)
+        InvoiceExcel.generate_invoices_file(employees)
     except Exception as e:
         print(e)
         raise
