@@ -90,6 +90,9 @@ def extract_employee_data(dataFrames, sheet_names):
 # Generate the output excel based on the information extracted from the input excel:
 def generate_invoices_file(employees):
     # Initial set up of the excel file:
+    """for emp in employees:
+            print(emp.get_name())
+            print(emp.jobs_list)"""
     try:
         counter = 1 # Indicates the row in which the information has to be written
         workbook = xlsxwriter.Workbook(output_filename) # Create a new excel file

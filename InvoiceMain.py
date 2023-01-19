@@ -15,7 +15,7 @@ output_filename = "montosFacturas.xlsx"
 def displayMainWindow():
     # Create main window:
     layout = getLayout("selectTablaPagos")
-    window = sg.Window('Elegir archivo', layout, element_justification='c')
+    window = sg.Window('Modulo de Facturas', layout, element_justification='c')
      
     while True:
         # Wait to read the user's input:
@@ -47,6 +47,7 @@ def displayMainWindow():
                 while True:
                     event2, _ = window2.read()
                     if event2 in [sg.WIN_CLOSED,'Aceptar']:
+                        window2.close()
                         break     
             except Exception as error:
                 # If there was an error creating the output file, then display an error message:
@@ -126,7 +127,7 @@ def getLayout(layout_id, error_str=""):
         ]
     return layout
 
-displayMainWindow()
+#displayMainWindow()
 
 """
 # Specify the "current working directory" as the directory where this script is located:

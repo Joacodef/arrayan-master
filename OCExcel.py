@@ -14,15 +14,11 @@ pos_scriptname = full_script_route.find(os.path.basename(__file__))
 script_folder = full_script_route[:pos_scriptname]
 os.chdir(script_folder)
 
-filename = "Plantillas tablas OC.xlsx"
-sht_name = "Plantilla 1"
-output_filename = "Resumen Mes.xlsx"
-
 def get_blueprint_num(filename):
     # Blueprints are differentiated by the column names that are present in the table.
-    df_1 = pd.read_excel(filename, sheet_name=sht_name)
+    df_1 = pd.read_excel(filename, sheet_name=0)
     df_1.dropna(how='all', axis=1, inplace=True)
-    df_1.fillna(" ", inplace=True) 
+    df_1.fillna(" ", inplace=True)
     #print(df_1)
     blueprint_num = 0
     proc_flag, price_flag, name_flag, amount_flag = False, False, False, False
@@ -52,11 +48,11 @@ def get_blueprint_num(filename):
     return blueprint_num, dict_column_pos
 
 def extract_employee_data(filename, blueprint_num, dict_column_pos):
-    df_1 = pd.read_excel(filename, sheet_name=sht_name)
+    job_name = pd.ExcelFile(filename).sheet_names[0]
+    df_1 = pd.read_excel(filename, sheet_name=0)
     df_1.dropna(how='all', axis=1, inplace=True)
     df_1.fillna(" ", inplace=True)
     employees_list = []
-    job_name = pd.ExcelFile(filename).sheet_names[0]
     if blueprint_num == 0:
         print("No se ha podido identificar el formato de la tabla de OC.")
     elif blueprint_num == 1:
@@ -116,23 +112,31 @@ def extract_employee_data(filename, blueprint_num, dict_column_pos):
         # Blueprint 3 is similar to blueprint 2, building employees in one go, but this time
         # each procedure is specified in a different column, so the iterating is done over rows 
         # and columns, and no "ending indicator" is needed.
-        print("Aun no empiezo a implementar el codigo para el formato 3.")
-    return employees_list
+        prices = df_1.iloc[0, :]
+        procedures = df_1.columns.values.tolist()[1:]
+        for i in range(2,len(df_1.axes[0])):
+            #print(df_1.iloc[i, :])
+            emp = Employee.Employee(df_1.iloc[i, 0], [{"job_name" : job_name}])
+            for j in range(1,len(df_1.axes[1])):
+                if df_1.iloc[i, j] != 0 and (isinstance(df_1.iloc[i, j], int) or isinstance(df_1.iloc[i, j], float)):
+                    emp.add_procedure_job(job_name, procedures[j-1], [int(df_1.iloc[i, j]),int(prices[j])*int(df_1.iloc[i, j])])
+            employees_list.append(emp)
+    return employees_list, job_name
 
-def generate_summary_file(output_filename, employees_list):
+def generate_summary_file(output_filename, employees_list, job_name):
     procs_list = [[],[]] # [[names],[prices]]
     emp_col = 3                                 
     workbook = xlsxwriter.Workbook(output_filename) # Create a new excel file
     # Define the formats to be used in the excel file:
     pp_style = workbook.add_format({'center_across' : True, 'font_name' : 'Calibri', 'bold' : True, 'border' : 1, 'font_size': 9, 'valign' : 'vcenter', 'bg_color' : '#FCD5B4'})
     names_style = workbook.add_format({'text_wrap' : True, 'border' : 1, 'font_size': 9, 'valign' : 'vcenter'})
-    proc_style = workbook.add_format({'center_across' : True, 'font_name' : 'Calibri', 'bold' : True, 'border' : 1, 'font_size': 9, 'valign' : 'vcenter', 'bg_color' : '#4BACC6'})
+    proc_style = workbook.add_format({'center_across' : True, 'font_name' : 'Calibri', 'bold' : True,'italic' : True, 'border' : 1, 'font_size': 9, 'valign' : 'vcenter', 'bg_color' : '#4BACC6'})
     price_style = workbook.add_format({'num_format': 44, 'font_name' : 'Calibri', 'italic' : True,'border' : 1, 'font_size': 9, 'valign' : 'vcenter', 'bg_color' : '#B7DEE8'})
     amount_style = workbook.add_format({'center_across' : True, 'text_wrap' : True, 'border' : 1, 'font_size': 11, 'valign' : 'vcenter'})
-    price2_style = workbook.add_format({'center_across' : True, 'num_format': 44, 'font_name' : 'Calibri', 'italic' : True,'border' : 1, 'font_size': 9, 'valign' : 'vcenter'})
+    price2_style = workbook.add_format({'center_across' : True, 'num_format': 44, 'font_name' : 'Calibri', 'border' : 1, 'font_size': 9, 'valign' : 'vcenter'})
     amount_style_green = workbook.add_format({'center_across' : True, 'text_wrap' : True, 'border' : 1, 'font_size': 11, 'valign' : 'vcenter', 'bg_color' : '#C4D79B'})
-    price2_style_green = workbook.add_format({'center_across' : True, 'num_format': 44, 'font_name' : 'Calibri', 'italic' : True,'border' : 1, 'font_size': 9, 'valign' : 'vcenter', 'bg_color' : '#C4D79B'})
-    worksheet = workbook.add_worksheet()
+    price2_style_green = workbook.add_format({'center_across' : True, 'num_format': 44, 'font_name' : 'Calibri', 'border' : 1, 'font_size': 9, 'valign' : 'vcenter', 'bg_color' : '#C4D79B'})
+    worksheet = workbook.add_worksheet(name = job_name)
     worksheet.write('B1', 'Procedimiento', pp_style)
     worksheet.write('C1', 'Precio', pp_style)
     worksheet.set_row(0, 48)
@@ -162,11 +166,11 @@ def generate_summary_file(output_filename, employees_list):
             for j in range(len(proc_names)):
                 if proc_names[j] == procs_list[0][i]:
                     worksheet.write(2*i+1, emp_col, procs[j][0], amount_style_green)
-                    worksheet.write_formula(2*i+2, emp_col, '=' + column_names[emp_col+1]+str(2*i+2)+"*"+"C"+str(2*i+2), price2_style_green)   
+                    worksheet.write_formula(2*i+2, emp_col, '=' + column_names[emp_col+1]+str(2*i+2)+"*"+"C"+str(2*i+2), cell_format=price2_style_green, value=procs[j][0]*procs_list[1][i])   
                     break                 
                 else:
                     worksheet.write(2*i+1, emp_col, 0, amount_style)
-                    worksheet.write_formula(2*i+2, emp_col, '=' + column_names[emp_col+1]+str(2*i+2)+"*"+"C"+str(2*i+2), price2_style)  
+                    worksheet.write_formula(2*i+2, emp_col, '=' + column_names[emp_col+1]+str(2*i+2)+"*"+"C"+str(2*i+2), cell_format=price2_style, value=procs[j][0]*procs_list[1][i])  
             emp_col += 1
     
     # Write the final row with the total money to pay to each employee:
@@ -189,12 +193,3 @@ def compare_strings(string1, string2, max_dist=0):
         return True
     else:
         return False
-
-blue_num, dict_col_pos = get_blueprint_num(filename)
-employees = extract_employee_data(filename, blue_num, dict_col_pos)
-
-"""for emp in employees:
-    print(emp.get_name())
-    print(emp.get_procedures_job("Plantilla 1"))"""
-
-generate_summary_file(output_filename, employees)
