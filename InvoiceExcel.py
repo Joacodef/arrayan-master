@@ -3,7 +3,7 @@ import Employee as emp
 import Levenshtein
 import xlsxwriter
 
-excel_column_names = ["","A","B","C","D","E","F","G","H","I","J","K","L","M"]
+excel_column_names = ["","A","B","C","D","E","F","G","H","I","J","K","L","M", "N", "O"]
 
 #filename = "TENS oct.xlsx"
 output_filename = "montosFacturas.xlsx"
@@ -96,12 +96,10 @@ def generate_invoices_file(employees):
         worksheet = workbook.add_worksheet()
         normal = workbook.add_format({'border': 1})
         bold = workbook.add_format({'bold': True, 'border': 1})
-        final = workbook.add_format({'bold': True, 'border': 1})
-        final.set_bg_color("#8DB4E2")
+        final = workbook.add_format({'bold': True, 'border': 1, 'bg_color': "#8DB4E2"})
         money_format = workbook.add_format({'num_format': '$#,##0', 'border': 1})
         money_format_bold = workbook.add_format({'num_format': '$#,##0', 'bold': True, 'border': 1})
-        money_format_final = workbook.add_format({'num_format': '$#,##0', 'bold': True, 'border': 1})
-        money_format_final.set_bg_color("#8DB4E2")
+        money_format_final = workbook.add_format({'num_format': '$#,##0', 'bold': True, 'border': 1, 'bg_color': "#8DB4E2"})
         for i in range(0,8,2):
             worksheet.set_column(i,i, 25)
             worksheet.set_column(i+1,i+1, 12)
@@ -132,11 +130,11 @@ def generate_invoices_file(employees):
                 for procedure in procs:
                     # For each procedure, write its name and the amount that has to be paid for it in the same row
                     if not compare_strings(str(procedure),"JOB_NAME",1):
-                        worksheet.write(excel_column_names[job_num]+str(counter_aux), str(procedure[0])+ " " + proc_names[i], normal)
+                        worksheet.write(counter_aux-1, job_num-1, str(procedure[0])+ " " + proc_names[i], normal)
                         if len(procedure) > 1:
-                            worksheet.write(excel_column_names[job_num+1]+str(counter_aux), procedure[1], money_format)
+                            worksheet.write(counter_aux-1, job_num, procedure[1], money_format)
                         else:
-                            worksheet.write(excel_column_names[job_num+1]+str(counter_aux), "", normal)
+                            worksheet.write(counter_aux-1, job_num, "", normal)
                         counter_aux += 1
                     if counter_aux > max_procedures:
                         max_procedures = counter_aux # Keep track of the highest row in which information has been written
@@ -158,11 +156,11 @@ def generate_invoices_file(employees):
             try:
                 procs, _ = emp.get_procedures_job(job_name)
                 if job_total > 1:
-                    worksheet.write(excel_column_names[job_num]+str(max_procedures), "subtotal", normal)
+                    worksheet.write(max_procedures-1, job_num-1, "subtotal", normal)
                     subtotal = 0.0 # Amount of money to be paid for each kind of job
                     for procedure in procs:
                         subtotal += float(procedure[1])
-                    worksheet.write(excel_column_names[job_num+1]+str(max_procedures), int(subtotal), money_format)
+                    worksheet.write(max_procedures-1, job_num, int(subtotal), money_format)
                     job_num += 2
                     total_total += subtotal
                 else:

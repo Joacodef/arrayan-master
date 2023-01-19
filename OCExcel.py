@@ -4,13 +4,19 @@ import xlsxwriter
 import os
 import Employee
 
+column_names_aux = ['']+[chr(i) for i in range(ord('A'), ord('Z')+1)]
+column_names = column_names_aux.copy()
+for char in column_names_aux:
+    column_names.append('A'+char)
+
 full_script_route = os.path.realpath(__file__)
 pos_scriptname = full_script_route.find(os.path.basename(__file__))
 script_folder = full_script_route[:pos_scriptname]
 os.chdir(script_folder)
 
 filename = "Plantillas tablas OC.xlsx"
-sht_name = "Plantilla 2"
+sht_name = "Plantilla 1"
+output_filename = "Resumen Mes.xlsx"
 
 def get_blueprint_num(filename):
     # Blueprints are differentiated by the column names that are present in the table.
@@ -100,7 +106,6 @@ def extract_employee_data(filename, blueprint_num, dict_column_pos):
                 emp_aux = Employee.Employee(name_aux, [{"job_name" : job_name}])
                 emp_aux.add_procedure_job(job_name, proc_name_aux, [amount_aux,price_aux])
                 employees_list.append(emp_aux)
-                current_emp_name = name_aux
             else:
                 emp_aux = employees_list[-1]
                 proc_name_aux = str(row[dict_column_pos["procedimiento"]]).strip()
@@ -114,8 +119,67 @@ def extract_employee_data(filename, blueprint_num, dict_column_pos):
         print("Aun no empiezo a implementar el codigo para el formato 3.")
     return employees_list
 
-def generate_summary_file():
-    print("Aun no empiezo a implementar la generacion del archivo de resumen.")
+def generate_summary_file(output_filename, employees_list):
+    procs_list = [[],[]] # [[names],[prices]]
+    emp_col = 3                                 
+    workbook = xlsxwriter.Workbook(output_filename) # Create a new excel file
+    # Define the formats to be used in the excel file:
+    pp_style = workbook.add_format({'center_across' : True, 'font_name' : 'Calibri', 'bold' : True, 'border' : 1, 'font_size': 9, 'valign' : 'vcenter', 'bg_color' : '#FCD5B4'})
+    names_style = workbook.add_format({'text_wrap' : True, 'border' : 1, 'font_size': 9, 'valign' : 'vcenter'})
+    proc_style = workbook.add_format({'center_across' : True, 'font_name' : 'Calibri', 'bold' : True, 'border' : 1, 'font_size': 9, 'valign' : 'vcenter', 'bg_color' : '#4BACC6'})
+    price_style = workbook.add_format({'num_format': 44, 'font_name' : 'Calibri', 'italic' : True,'border' : 1, 'font_size': 9, 'valign' : 'vcenter', 'bg_color' : '#B7DEE8'})
+    amount_style = workbook.add_format({'center_across' : True, 'text_wrap' : True, 'border' : 1, 'font_size': 11, 'valign' : 'vcenter'})
+    price2_style = workbook.add_format({'center_across' : True, 'num_format': 44, 'font_name' : 'Calibri', 'italic' : True,'border' : 1, 'font_size': 9, 'valign' : 'vcenter'})
+    amount_style_green = workbook.add_format({'center_across' : True, 'text_wrap' : True, 'border' : 1, 'font_size': 11, 'valign' : 'vcenter', 'bg_color' : '#C4D79B'})
+    price2_style_green = workbook.add_format({'center_across' : True, 'num_format': 44, 'font_name' : 'Calibri', 'italic' : True,'border' : 1, 'font_size': 9, 'valign' : 'vcenter', 'bg_color' : '#C4D79B'})
+    worksheet = workbook.add_worksheet()
+    worksheet.write('B1', 'Procedimiento', pp_style)
+    worksheet.write('C1', 'Precio', pp_style)
+    worksheet.set_row(0, 48)
+    for i in range(0, len(employees_list)+3):
+        worksheet.set_column(i,i, 11)
+    # Write the names of the employees in the first row, extract all the different procedures performed:
+    for emp in employees_list:
+        worksheet.write(0,emp_col,emp.get_name().upper(), names_style)
+        emp_col += 1
+        job_name = emp.get_job_names()[0]
+        procs, proc_names = emp.get_procedures_job(job_name)
+        # Get all the different procedures and then build each row iterating over them:
+        for i in range(len(proc_names)):
+            if proc_names[i] not in procs_list[0]:
+                procs_list[0].append(proc_names[i])
+                procs_list[1].append(int(procs[i][1]/procs[i][0]))
+            #else: en una de esas, verificar si el precio es el mismo, si no, avisar o almacenarlo como nuevo procedimiento
+
+    # Write each amount and price for the procedures of each employee:
+    for i in range(len(procs_list[0])):
+        worksheet.merge_range(2*i+1,1,2*i+2,1, procs_list[0][i].upper(), proc_style)
+        worksheet.merge_range(2*i+1,2,2*i+2,2, procs_list[1][i], price_style)
+        emp_col = 3 
+        for emp in employees_list:
+            job_name = emp.get_job_names()[0]
+            procs, proc_names = emp.get_procedures_job(job_name)
+            for j in range(len(proc_names)):
+                if proc_names[j] == procs_list[0][i]:
+                    worksheet.write(2*i+1, emp_col, procs[j][0], amount_style_green)
+                    worksheet.write_formula(2*i+2, emp_col, '=' + column_names[emp_col+1]+str(2*i+2)+"*"+"C"+str(2*i+2), price2_style_green)   
+                    break                 
+                else:
+                    worksheet.write(2*i+1, emp_col, 0, amount_style)
+                    worksheet.write_formula(2*i+2, emp_col, '=' + column_names[emp_col+1]+str(2*i+2)+"*"+"C"+str(2*i+2), price2_style)  
+            emp_col += 1
+    
+    # Write the final row with the total money to pay to each employee:
+    worksheet.write(len(procs_list[0])*2+1, 1, "Total", names_style)
+    worksheet.write(len(procs_list[0])*2+1, 2, "", names_style)
+    emp_col = 3
+    for emp in employees_list:
+        row_formula = "="
+        for i in range(3,len(procs_list[0])*2+3,2):
+            row_formula += "+" + column_names[emp_col+1]+str(i)  
+        worksheet.write_formula(len(procs_list[0])*2+1, emp_col, row_formula, price2_style)
+        emp_col += 1
+    workbook.close()
 
 def compare_strings(string1, string2, max_dist=0):
     # Compare strings indpendently of upper/lower case and surrounding spaces
@@ -129,6 +193,8 @@ def compare_strings(string1, string2, max_dist=0):
 blue_num, dict_col_pos = get_blueprint_num(filename)
 employees = extract_employee_data(filename, blue_num, dict_col_pos)
 
-for emp in employees:
+"""for emp in employees:
     print(emp.get_name())
-    print(emp.get_procedures_job("Plantilla 1"))
+    print(emp.get_procedures_job("Plantilla 1"))"""
+
+generate_summary_file(output_filename, employees)
