@@ -186,6 +186,35 @@ def generate_summary_file(output_filename, employees_list, job_name):
         emp_col += 1
     workbook.close()
 
+def merge_employee_lists(employee_lists):
+    # It is assumed that employees in these lists will all have one job, and that job will be the same for all of them
+    if len(employee_lists) == 0:
+        return []
+    elif len(employee_lists) == 1:
+        return employee_lists[0]
+    else:
+        merged_list = []
+        for emp_list in employee_lists:
+            for emp in emp_list:
+                found = False
+                for emp2 in merged_list:
+                    if compare_strings(emp.get_name(),emp2.get_name(),2):
+                        # Modify emp2 to include new jobs and procedures:
+                        # Bad practice: we access directly to the list of jobs, instead of using the get_jobs_list() method
+                        for procedure in emp.jobs_list[0].keys():
+                            if procedure != "job_name":
+                                if procedure not in emp2.jobs_list[0].keys():
+                                    emp2.jobs_list[0][procedure] = emp.jobs_list[0][procedure]
+                                else:
+                                    emp2.jobs_list[0][procedure][0] += emp.jobs_list[0][procedure][0]
+                                    emp2.jobs_list[0][procedure][1] += emp.jobs_list[0][procedure][1]
+                        found = True
+                        break
+                if not found:
+                    merged_list.append(emp)
+        return merged_list
+
+
 def compare_strings(string1, string2, max_dist=0):
     # Compare strings indpendently of upper/lower case and surrounding spaces
     # Levenshtein distances allows us to compare HOW different 2 strings are. 

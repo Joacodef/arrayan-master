@@ -9,13 +9,15 @@ os.chdir(os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop'))
 working_directory = os.getcwd()
 
 LOGS = False
-input_text_key = "rutaArchivo"
+input_filename = "file1"
+input_filename2 = "file2"
+input_filename3 = "file3"
 output_filename = "Resumen Mes.xlsx"
 
 def displayMainWindow():
     # Create main window:
     layout = getLayout("selectTablaPagos")
-    window = sg.Window('Modulo de OCs', layout, element_justification='c')
+    window = sg.Window('Resumen de Órdenes de Compra', layout, element_justification='c')
      
     while True:
         # Wait to read the user's input:
@@ -29,12 +31,15 @@ def displayMainWindow():
             promptExcelOverwrite(output_filename)
 
             # 2.- Once the user has selected a file, check if it has the correct file extension and if the older output file can be removed:
-            if ".xlsx" not in values[input_text_key]:
-                raiseException("1: El archivo seleccionado no tiene extensión \'.xlsx\'.")            
+            if (".xlsx" not in values[input_filename] and ".xls" not in values[input_filename] and values[input_filename] != "")\
+            or (".xlsx" not in values[input_filename2] and ".xls" not in values[input_filename2] and values[input_filename2] != "")\
+            or (".xlsx" not in values[input_filename3] and ".xls" not in values[input_filename3] and values[input_filename3] != ""):
+                raiseException("1: El archivo seleccionado no tiene extensión \'.xlsx\' o \'.xls\'.")            
 
             # If all the checks are passed, try to create the output file:
             try:
-                createExcel(values["rutaArchivo"])
+                # print(values[input_filename], values[input_filename2], values[input_filename3])
+                createExcel(values[input_filename], values[input_filename2], values[input_filename3])
                 # Check if the output file was created successfully:
                 if os.path.exists(output_filename):
                     layout2 = getLayout("creationSuccess")
@@ -90,11 +95,23 @@ def promptExcelOverwrite(filename):
             else:
                 exit()
 
-def createExcel(filename):
+def createExcel(filename, filename2, filename3):
     # Call all the functions to create the output file:
     try:
-        blue_num, dict_col_pos = OCExcel.get_blueprint_num(filename)
-        employees, job_name = OCExcel.extract_employee_data(filename, blue_num, dict_col_pos)
+        job_name = ""
+        employee_lists = [] 
+        for file in [filename, filename2, filename3]:
+            if file != "":
+                blue_num, dict_col_pos = OCExcel.get_blueprint_num(file)
+                employees, job_name_aux = OCExcel.extract_employee_data(file, blue_num, dict_col_pos)
+                employee_lists.append(employees)
+                if job_name_aux != "" and job_name_aux.upper() != "HOJA1" and job_name_aux.upper() != "SHEET1":
+                    job_name = job_name_aux
+
+        employees = OCExcel.merge_employee_lists(employee_lists)
+        if job_name == "":
+            job_name = "Trabajo"
+
         OCExcel.generate_summary_file(output_filename, employees, job_name)
             
         """for emp in employees:
@@ -108,9 +125,13 @@ def getLayout(layout_id, error_str=""):
     # This function returns the layout of the window depending on the layout_id:
     if layout_id == "selectTablaPagos":
         layout = [
-            [sg.Text("Seleccione Archivo: ")],
-            [sg.InputText(key=input_text_key),
-            sg.FileBrowse(initial_folder=working_directory)],
+            [sg.Text("Seleccione hasta 3 Archivos: ")],
+            [sg.InputText(key=input_filename),
+            sg.FileBrowse('Examinar',initial_folder=working_directory)],
+            [sg.InputText(key=input_filename2),
+            sg.FileBrowse('Examinar',initial_folder=working_directory)],
+            [sg.InputText(key=input_filename3),
+            sg.FileBrowse('Examinar',initial_folder=working_directory)],
             [sg.Button("Seleccionar"), sg.Button("Cancelar")]
         ]
     elif layout_id == "creationSuccess":

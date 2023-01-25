@@ -106,7 +106,7 @@ def getLayout(layout_id, error_str=""):
         layout = [
             [sg.Text("Seleccione Archivo: ")],
             [sg.InputText(key=input_text_key),
-            sg.FileBrowse(initial_folder=working_directory)],
+            sg.FileBrowse('Examinar',initial_folder=working_directory)],
             [sg.Button("Seleccionar"), sg.Button("Cancelar")]
         ]
     elif layout_id == "creationSuccess":
