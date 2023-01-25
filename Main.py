@@ -3,9 +3,9 @@ import OCMain
 import InvoiceMain
 
 layout_Main = [
-            [sg.Text("Eleja a qué módulo desea entrar:")],
-            [sg.Button("Módulo OCs")],
-            [sg.Button("Módulo Facturas")]
+            [sg.Text("Elija qué desea hacer:")],
+            [sg.Button("Generar excel de Resumen Mensual")],
+            [sg.Button("Generar excel de Facturas")]
         ]
 
 window_Main = sg.Window('Elegir módulo', layout_Main, element_justification='c')
@@ -16,7 +16,7 @@ while True:
     # If the user closes the window or clicks the "Cancel" button, then exit the program:
     if event in [sg.WIN_CLOSED,'Cancelar']:
         break
-    elif event == "Módulo OCs":
+    elif event == "Generar excel de Resumen Mensual":
         OCMain.displayMainWindow()
-    elif event == "Módulo Facturas":
+    elif event == "Generar excel de Facturas":
         InvoiceMain.displayMainWindow()

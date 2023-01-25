@@ -7,6 +7,7 @@ import Employee
 column_names_aux = ['']+[chr(i) for i in range(ord('A'), ord('Z')+1)]
 column_names = column_names_aux.copy()
 for char in column_names_aux:
+    if char == '': continue
     column_names.append('A'+char)
 
 full_script_route = os.path.realpath(__file__)
