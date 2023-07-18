@@ -159,11 +159,11 @@ def generate_invoices_file(employees):
             try:
                 procs, _ = emp.get_procedures_job(job_name)
                 if job_total > 1:
-                    worksheet.write(max_procedures-1, job_num-1, "subtotal", normal)
+                    worksheet.write(max_procedures-1, job_num-1, "Subtotal", bold)
                     subtotal = 0.0 # Amount of money to be paid for each kind of job
                     for procedure in procs:
                         subtotal += float(procedure[1])
-                    worksheet.write(max_procedures-1, job_num, int(subtotal), money_format)
+                    worksheet.write(max_procedures-1, job_num, int(subtotal), money_format_bold)
                     job_num += 2
                     total_total += subtotal
                 else:
@@ -186,12 +186,31 @@ def generate_invoices_file(employees):
         else:
         """
         # Write the rows total, 4% and MONTO BOLETA in the excel file:
-        worksheet.write('A'+str(max_procedures+1), "total", normal)
-        worksheet.write('B'+str(max_procedures+1), int(total_total), money_format)
-        worksheet.write('A'+str(max_procedures+2), "4%", bold)
-        worksheet.write('B'+str(max_procedures+2), int(total_total)*0.04, money_format_bold)
-        worksheet.write('A'+str(max_procedures+3), "MONTO BOLETA", final)
-        worksheet.write('B'+str(max_procedures+3), int(total_total)*0.96, money_format_final)
+
+        centered_bold = bold
+        centered_bold.set_align('center')
+        centered_final = final
+        centered_final.set_align('center')
+        centered_money_format_bold = money_format_bold
+        centered_money_format_bold.set_align('center')
+        centered_money_format_final = money_format_final
+        centered_money_format_final.set_align('center')
+
+        if job_num > 1:
+            print("A"+str(max_procedures+1)+":"+excel_column_names[int(job_num/2)]+str(max_procedures+1))
+            worksheet.merge_range("A"+str(max_procedures+1)+":"+excel_column_names[int(job_num/2)]+str(max_procedures+1),"Total", centered_bold)
+            worksheet.merge_range(excel_column_names[int(job_num/2)+1]+str(max_procedures+1)+":"+excel_column_names[job_num-1]+str(max_procedures+1),int(total_total), centered_money_format_bold)
+            worksheet.merge_range("A"+str(max_procedures+2)+":"+excel_column_names[int(job_num/2)]+str(max_procedures+2),"4%", centered_bold)
+            worksheet.merge_range(excel_column_names[int(job_num/2)+1]+str(max_procedures+2)+":"+excel_column_names[job_num-1]+str(max_procedures+2),int(total_total)*0.04, centered_money_format_bold)
+            worksheet.merge_range("A"+str(max_procedures+3)+":"+excel_column_names[int(job_num/2)]+str(max_procedures+3),"MONTO BOLETA", centered_final)
+            worksheet.merge_range(excel_column_names[int(job_num/2)+1]+str(max_procedures+3)+":"+excel_column_names[job_num-1]+str(max_procedures+3),int(total_total)*0.96, centered_money_format_final)
+        else:
+            worksheet.write('A'+str(max_procedures+1), "Total", bold)
+            worksheet.write('B'+str(max_procedures+1), int(total_total), money_format_bold)
+            worksheet.write('A'+str(max_procedures+2), "4%", bold)
+            worksheet.write('B'+str(max_procedures+2), int(total_total)*0.04, money_format_bold)
+            worksheet.write('A'+str(max_procedures+3), "MONTO BOLETA", final)
+            worksheet.write('B'+str(max_procedures+3), int(total_total)*0.96, money_format_final)
         counter = max_procedures + 6
     workbook.close()
 
